@@ -36,3 +36,53 @@ BEGIN
         SELECT id, 0 FROM clientes;
 END;
 $$;
+
+
+CREATE OR REPLACE FUNCTION credit(
+    parametro_cliente_id INT,
+    parametro_valor INT,
+    parametro_tipo CHAR(1),
+    parametro_descricao VARCHAR(10)
+)
+RETURNS INT AS $$
+DECLARE
+saldo_value INT;
+BEGIN
+
+    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
+    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
+
+    UPDATE saldos SET valor = valor + parametro_valor WHERE cliente_id = parametro_cliente_id
+    RETURNING valor INTO saldo_value;
+
+    RETURN saldo_value;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION debit(
+    parametro_cliente_id INT,
+    parametro_limite INT,
+    parametro_valor INT,
+    parametro_tipo CHAR(1),
+    parametro_descricao VARCHAR(10)
+)
+RETURNS INT AS $$
+DECLARE
+saldo_value INT;
+BEGIN
+
+    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
+    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
+
+    SELECT valor - parametro_valor INTO saldo_value FROM saldos WHERE cliente_id = parametro_cliente_id;
+    IF saldo_value < parametro_limite THEN
+       RAISE EXCEPTION 'Saldo insuficiente %', parametro_cliente_id
+       RETURN;
+    END IF;
+
+    UPDATE saldos SET valor = valor - parametro_valor WHERE cliente_id = parametro_cliente_id
+    RETURNING valor INTO saldo_value;
+
+RETURN saldo_value;
+END;
+$$ LANGUAGE plpgsql;

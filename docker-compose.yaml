@@ -24,6 +24,8 @@ services:
       - POSTGRES_PASSWORD=admin
       - POSTGRES_USER=admin
       - POSTGRES_DB=rinha
+    ports:
+      - "5432:5432"
     volumes:
       - ./import.sql:/docker-entrypoint-initdb.d/script.sql
     deploy:
