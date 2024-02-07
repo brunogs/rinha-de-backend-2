@@ -20,7 +20,6 @@ func main() {
 	handler := api.NewHandler(queries, app)
 	handler.SetupEndpoints()
 
-	// replace port from env var
 	err = app.Listen(fmt.Sprintf(":%d", 3000))
 	if err != nil {
 		log.Fatal("Falhou ao iniciar Fiber")

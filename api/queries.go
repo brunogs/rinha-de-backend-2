@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"strings"
 )
@@ -49,9 +48,9 @@ func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Tra
 	var balance int32
 	err = row.Scan(&balance)
 	if err != nil {
-		fmt.Println(err)
-		return 0, ErrNoLimit
+		return 0, err
 	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return 0, err
 	}
@@ -74,6 +73,7 @@ func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Tran
 		}
 		return 0, err
 	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return 0, err
 	}

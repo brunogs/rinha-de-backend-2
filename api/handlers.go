@@ -44,9 +44,6 @@ const (
 )
 
 func (t Transaction) isValid() bool {
-	if t.Type != "c" && t.Type != "d" {
-		return false
-	}
 	if len(t.Description) < 1 || len(t.Description) > 10 {
 		return false
 	}

@@ -13,6 +13,7 @@ const (
 	dbUser     = "admin"
 	dbPassword = "admin"
 	dbName     = "rinha"
+	dbMinConns = 60
 )
 
 func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
@@ -20,7 +21,6 @@ func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
 	if !found {
 		host = dbHost
 	}
-	connString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", dbUser, dbPassword, host, dbPort, dbName)
-	// set variables with min/max connections
+	connString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?pool_min_conns=%d", dbUser, dbPassword, host, dbPort, dbName, dbMinConns)
 	return pgxpool.New(ctx, connString)
 }
