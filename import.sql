@@ -48,6 +48,7 @@ RETURNS INT AS $$
 DECLARE
 saldo_value INT;
 BEGIN
+    PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
     VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
@@ -70,6 +71,7 @@ RETURNS INT AS $$
 DECLARE
 saldo_value INT;
 BEGIN
+    PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
     VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());

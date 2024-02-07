@@ -57,10 +57,23 @@ func (t Transaction) isValid() bool {
 }
 
 func NewHandler(queries Queries, app *fiber.App) Handler {
-	customers, err := queries.SelectAllCustomers(context.Background())
-	if err != nil {
-		log.Fatal("query para carregar clientes falhando", err)
+	attemps := 4
+	var customers []Customer
+	var err error
+	for i := 0; i < attemps; i++ {
+		customers, err = queries.SelectAllCustomers(context.Background())
+		if err != nil {
+			log.Println(err, "retrying")
+			time.Sleep(500 * time.Millisecond)
+		}
+		if customers != nil {
+			break
+		}
 	}
+	if len(customers) == 0 {
+		log.Fatal("falhou ao carregar clientes", err)
+	}
+
 	customersByID := make(map[int32]*Customer)
 	for _, c := range customers {
 		customer := c
