@@ -26,7 +26,7 @@ func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.MaxConns = 30
+	config.MaxConns = 20
 	config.MinConns = 20
 	return pgxpool.NewWithConfig(ctx, config)
 }

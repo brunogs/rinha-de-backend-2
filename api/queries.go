@@ -64,40 +64,21 @@ func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
 var ErrNoLimit = errors.New("Sem limite")
 
 func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	/*tx, err := q.pool.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)*/
-
 	row := q.pool.QueryRow(ctx, callCredit, customer.ID, transaction.Value, transaction.Type, transaction.Description)
 	var balance int32
 	err := row.Scan(&balance)
 	if err != nil {
 		return 0, err
 	}
-
-	/*if err = tx.Commit(ctx); err != nil {
-		return 0, err
-	}*/
 	return balance, nil
 }
 
 func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	/*tx, err := q.pool.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)*/
-
 	row := q.pool.QueryRow(ctx, callDebit, customer.ID, customer.Limit*-1, transaction.Value, transaction.Type, transaction.Description)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {
 		return 0, ErrNoLimit
 	}
-	/*if err = tx.Commit(ctx); err != nil {
-		return 0, err
-	}*/
 	return balance, nil
 }
 

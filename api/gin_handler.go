@@ -66,7 +66,7 @@ func (h GinHandler) handleTransaction(c *gin.Context) {
 		return
 	}
 
-	idStr := c.Param("id")
+	idStr := c.Param(fieldID)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.Status(http.StatusUnprocessableEntity)
@@ -124,7 +124,7 @@ func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transa
 }
 
 func (h GinHandler) handleExtract(c *gin.Context) {
-	idStr := c.Param("id")
+	idStr := c.Param(fieldID)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		c.Status(http.StatusUnprocessableEntity)
