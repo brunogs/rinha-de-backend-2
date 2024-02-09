@@ -9,61 +9,14 @@ import (
 )
 
 type (
-	Handler struct {
+	FiberHandler struct {
 		queries   Queries
 		app       *fiber.App
 		customers map[int32]*Customer
 	}
-
-	Transaction struct {
-		Value       int32  `json:"valor"`
-		Type        string `json:"tipo"`
-		Description string `json:"descricao"`
-	}
-
-	Customer struct {
-		ID    int32  `json:"id"`
-		Name  string `json:"nome"`
-		Limit int32  `json:"limite"`
-	}
-
-	Balance struct {
-		Limit        int32 `json:"limite"`
-		BalanceValue int32 `json:"saldo"`
-	}
-
-	ExtractBalance struct {
-		Total int32     `json:"total"`
-		Date  time.Time `json:"data_extrato"`
-		Limit int32     `json:"limite"`
-	}
-	ExtractRow struct {
-		CreatedAt time.Time `json:"realizado_em"`
-		Transaction
-	}
 )
 
-const (
-	credit = "c"
-	debit  = "d"
-
-	fieldID = "id"
-
-	balanceLabel         = "saldo"
-	lastTransactionLabel = "ultimas_transacoes"
-)
-
-func (t Transaction) isValid() bool {
-	if len(t.Description) < 1 || len(t.Description) > 10 {
-		return false
-	}
-	if t.Value == 0 {
-		return false
-	}
-	return true
-}
-
-func NewHandler(queries Queries, app *fiber.App) Handler {
+func NewFiberHandler(queries Queries, app *fiber.App) FiberHandler {
 	attemps := 4
 	var customers []Customer
 	var err error
@@ -86,24 +39,24 @@ func NewHandler(queries Queries, app *fiber.App) Handler {
 		customer := c
 		customersByID[c.ID] = &customer
 	}
-	return Handler{
+	return FiberHandler{
 		queries:   queries,
 		app:       app,
 		customers: customersByID,
 	}
 }
 
-func (h Handler) SetupEndpoints() {
+func (h FiberHandler) SetupEndpoints() {
 	h.app.Get("/", h.handleRoot)
 	h.app.Post("/clientes/:id/transacoes", h.handleTransaction)
 	h.app.Get("/clientes/:id/extrato", h.handleExtract)
 }
 
-func (h Handler) handleRoot(c fiber.Ctx) error {
+func (h FiberHandler) handleRoot(c fiber.Ctx) error {
 	return c.SendString("OK")
 }
 
-func (h Handler) handleTransaction(c fiber.Ctx) error {
+func (h FiberHandler) handleTransaction(c fiber.Ctx) error {
 	var transaction Transaction
 	if err := c.Bind().Body(&transaction); err != nil {
 		return c.SendStatus(422)
@@ -129,11 +82,11 @@ func (h Handler) handleTransaction(c fiber.Ctx) error {
 	}
 }
 
-func (h Handler) getCustomer(customerID int32) *Customer {
+func (h FiberHandler) getCustomer(customerID int32) *Customer {
 	return h.customers[customerID]
 }
 
-func (h Handler) credit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
+func (h FiberHandler) credit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
 	balance, err := h.queries.Credit(context.Background(), customer, transaction)
 	if err != nil {
 		return c.SendStatus(500)
@@ -145,7 +98,7 @@ func (h Handler) credit(c fiber.Ctx, customer *Customer, transaction Transaction
 	return c.JSON(b)
 }
 
-func (h Handler) debit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
+func (h FiberHandler) debit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
 	balance, err := h.queries.Debit(context.Background(), customer, transaction)
 	if err != nil {
 		if errors.Is(err, ErrNoLimit) {
@@ -160,7 +113,7 @@ func (h Handler) debit(c fiber.Ctx, customer *Customer, transaction Transaction)
 	return c.JSON(b)
 }
 
-func (h Handler) handleExtract(c fiber.Ctx) error {
+func (h FiberHandler) handleExtract(c fiber.Ctx) error {
 	customerID, err := c.ParamsInt(fieldID)
 	if err != nil {
 		return c.SendStatus(422)

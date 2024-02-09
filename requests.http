@@ -18,5 +18,15 @@ Content-Type: application/json
 }
 
 ###
+POST http://localhost:3000/clientes/1/transacoes
+Content-Type: application/json
+
+{
+  "valor": "1",
+  "tipo": "c",
+  "descricao" : null
+}
+
+###
 GET http://localhost:3000/clientes/1/extrato
 
