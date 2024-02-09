@@ -10,10 +10,9 @@ import (
 const (
 	dbHost     = "localhost"
 	dbPort     = 5432
-	dbUser     = "admin"
-	dbPassword = "admin"
+	dbUser     = "postgres"
+	dbPassword = "pass"
 	dbName     = "rinha"
-	dbMinConns = 60
 )
 
 func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
@@ -21,6 +20,13 @@ func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
 	if !found {
 		host = dbHost
 	}
-	connString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?pool_min_conns=%d", dbUser, dbPassword, host, dbPort, dbName, dbMinConns)
-	return pgxpool.New(ctx, connString)
+	connString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", dbUser, dbPassword, host, dbPort, dbName)
+
+	config, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, err
+	}
+	config.MaxConns = 6
+	config.MinConns = 6
+	return pgxpool.NewWithConfig(ctx, config)
 }

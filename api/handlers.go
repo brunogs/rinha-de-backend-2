@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"log"
 	"time"
 )
@@ -32,6 +32,11 @@ type (
 		BalanceValue int32 `json:"saldo"`
 	}
 
+	ExtractBalance struct {
+		Total int32     `json:"total"`
+		Date  time.Time `json:"data_extrato"`
+		Limit int32     `json:"limite"`
+	}
 	ExtractRow struct {
 		CreatedAt time.Time `json:"realizado_em"`
 		Transaction
@@ -41,6 +46,11 @@ type (
 const (
 	credit = "c"
 	debit  = "d"
+
+	fieldID = "id"
+
+	balanceLabel         = "saldo"
+	lastTransactionLabel = "ultimas_transacoes"
 )
 
 func (t Transaction) isValid() bool {
@@ -89,21 +99,21 @@ func (h Handler) SetupEndpoints() {
 	h.app.Get("/clientes/:id/extrato", h.handleExtract)
 }
 
-func (h Handler) handleRoot(c *fiber.Ctx) error {
+func (h Handler) handleRoot(c fiber.Ctx) error {
 	return c.SendString("OK")
 }
 
-func (h Handler) handleTransaction(c *fiber.Ctx) error {
+func (h Handler) handleTransaction(c fiber.Ctx) error {
 	var transaction Transaction
-	if err := c.BodyParser(&transaction); err != nil {
-		return c.Status(422).SendString("body invalido")
+	if err := c.Bind().Body(&transaction); err != nil {
+		return c.SendStatus(422)
 	}
 	if !transaction.isValid() {
-		return c.Status(422).SendString("valores do body invalido")
+		return c.SendStatus(422)
 	}
-	customerID, err := c.ParamsInt("id")
+	customerID, err := c.ParamsInt(fieldID)
 	if err != nil {
-		return c.Status(422).SendString("id invalido")
+		return c.SendStatus(422)
 	}
 	customer := h.getCustomer(int32(customerID))
 	if customer == nil {
@@ -123,10 +133,10 @@ func (h Handler) getCustomer(customerID int32) *Customer {
 	return h.customers[customerID]
 }
 
-func (h Handler) credit(c *fiber.Ctx, customer *Customer, transaction Transaction) error {
-	balance, err := h.queries.Credit(c.Context(), customer, transaction)
+func (h Handler) credit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
+	balance, err := h.queries.Credit(context.Background(), customer, transaction)
 	if err != nil {
-		return c.Status(500).SendString(err.Error())
+		return c.SendStatus(500)
 	}
 	b := Balance{
 		Limit:        customer.Limit,
@@ -135,13 +145,13 @@ func (h Handler) credit(c *fiber.Ctx, customer *Customer, transaction Transactio
 	return c.JSON(b)
 }
 
-func (h Handler) debit(c *fiber.Ctx, customer *Customer, transaction Transaction) error {
-	balance, err := h.queries.Debit(c.Context(), customer, transaction)
+func (h Handler) debit(c fiber.Ctx, customer *Customer, transaction Transaction) error {
+	balance, err := h.queries.Debit(context.Background(), customer, transaction)
 	if err != nil {
 		if errors.Is(err, ErrNoLimit) {
 			return c.SendStatus(422)
 		}
-		return c.Status(500).SendString(err.Error())
+		return c.SendStatus(500)
 	}
 	b := Balance{
 		Limit:        customer.Limit,
@@ -150,12 +160,12 @@ func (h Handler) debit(c *fiber.Ctx, customer *Customer, transaction Transaction
 	return c.JSON(b)
 }
 
-func (h Handler) handleExtract(c *fiber.Ctx) error {
-	customerID, err := c.ParamsInt("id")
+func (h Handler) handleExtract(c fiber.Ctx) error {
+	customerID, err := c.ParamsInt(fieldID)
 	if err != nil {
-		return c.Status(422).SendString("id invalido")
+		return c.SendStatus(422)
 	}
-	extractRows, err := h.queries.Extract(c.Context(), int32(customerID))
+	extractRows, err := h.queries.Extract(context.Background(), int32(customerID))
 	if err != nil {
 		return err
 	}
@@ -164,12 +174,8 @@ func (h Handler) handleExtract(c *fiber.Ctx) error {
 		balance := extractRows[0]
 		transactions := extractRows[1:]
 		response := map[string]any{
-			"saldo": map[string]any{
-				"total":        balance.Value,
-				"data_extrato": balance.CreatedAt,
-				"limite":       customer.Limit,
-			},
-			"ultimas_transacoes": transactions,
+			balanceLabel:         ExtractBalance{balance.Value, balance.CreatedAt, customer.Limit},
+			lastTransactionLabel: transactions,
 		}
 		return c.JSON(response)
 	}

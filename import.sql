@@ -1,3 +1,6 @@
+--CREATE ROLE root WITH SUPERUSER LOGIN PASSWORD 'pass'; -- para arrumar um log insuportavel
+--CREATE DATABASE root; -- para arrumar um log insuportavel
+
 CREATE TABLE clientes (
   id SERIAL PRIMARY KEY,
   nome VARCHAR (50) NOT NULL,
@@ -14,6 +17,8 @@ CREATE TABLE transacoes (
     CONSTRAINT fk_clientes_transacoes_id
         FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
+
+CREATE INDEX idx_transacoes_id_desc ON transacoes(id desc);
 
 CREATE TABLE saldos (
     id SERIAL PRIMARY KEY,
@@ -48,13 +53,13 @@ RETURNS INT AS $$
 DECLARE
 saldo_value INT;
 BEGIN
-    PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
-
-    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
-    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
+    --PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
 
     UPDATE saldos SET valor = valor + parametro_valor WHERE cliente_id = parametro_cliente_id
     RETURNING valor INTO saldo_value;
+
+    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
+    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
 
     RETURN saldo_value;
 END;
@@ -70,21 +75,21 @@ CREATE OR REPLACE FUNCTION debit(
 RETURNS INT AS $$
 DECLARE
 saldo_value INT;
+
 BEGIN
-    PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
+    --PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
+
+    UPDATE saldos SET valor = valor - parametro_valor
+    WHERE cliente_id = parametro_cliente_id AND valor - parametro_valor > parametro_limite
+    RETURNING valor INTO saldo_value;
+
+    IF saldo_value < parametro_limite THEN
+       RETURN NULL;
+    END IF;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
     VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
 
-    SELECT valor - parametro_valor INTO saldo_value FROM saldos WHERE cliente_id = parametro_cliente_id;
-    IF saldo_value < parametro_limite THEN
-       RAISE EXCEPTION 'Saldo insuficiente %', parametro_cliente_id
-       RETURN;
-    END IF;
-
-    UPDATE saldos SET valor = valor - parametro_valor WHERE cliente_id = parametro_cliente_id
-    RETURNING valor INTO saldo_value;
-
-RETURN saldo_value;
+    RETURN saldo_value;
 END;
 $$ LANGUAGE plpgsql;
