@@ -2,14 +2,16 @@ version: "3.6"
 
 services:
   api01: &api
-    #build:
-    #  context: .
-    #  dockerfile: dockerfile
-    image: bgskurono/rinha-gogin:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #image: bgskurono/rinha-gogin:latest
     hostname: api01
     environment:
       - DB_HOSTNAME=db
       - PORT=3000
+      - POOL_MAX=20
+      - POOL_MIN=12
     ports:
       - "3001:3000"
     depends_on:

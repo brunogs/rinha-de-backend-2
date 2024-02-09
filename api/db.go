@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
+	"strconv"
 )
 
 const (
@@ -16,9 +17,9 @@ const (
 )
 
 func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
-	host, found := os.LookupEnv("DB_HOSTNAME")
-	if !found {
-		host = dbHost
+	host := dbHost
+	if value, found := os.LookupEnv("DB_HOSTNAME"); found {
+		host = value
 	}
 	connString := fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", dbUser, dbPassword, host, dbPort, dbName)
 
@@ -26,7 +27,14 @@ func NewPoolConnection(ctx context.Context) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.MaxConns = 6
-	config.MinConns = 6
+	maxConns, minConns := 6, 6
+	if value, found := os.LookupEnv("POOL_MAX"); found {
+		maxConns, _ = strconv.Atoi(value)
+	}
+	if value, found := os.LookupEnv("POOL_MIN"); found {
+		minConns, _ = strconv.Atoi(value)
+	}
+	config.MaxConns = int32(maxConns)
+	config.MinConns = int32(minConns)
 	return pgxpool.NewWithConfig(ctx, config)
 }
