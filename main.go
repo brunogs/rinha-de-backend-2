@@ -4,7 +4,7 @@ import (
 	"api/api"
 	"context"
 	"fmt"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 )
@@ -17,13 +17,15 @@ func main() {
 
 	queries := api.NewQueries(pool)
 	//Fiber foi o primeiro teste
-	app := fiber.New()
-	handler := api.NewFiberHandler(queries, app)
-	handler.SetupEndpoints()
-	err = app.Listen(fmt.Sprintf(":%d", 3000))
-	if err != nil {
-		panic("Falhou ao iniciar Fiber")
-	}
+	/*
+		app := fiber.New()
+		handler := api.NewFiberHandler(queries, app)
+		handler.SetupEndpoints()
+		err = app.Listen(fmt.Sprintf(":%d", 3000))
+		if err != nil {
+			panic("Falhou ao iniciar Fiber")
+		}
+	*/
 
 	// Std http package
 	/*handler := api.NewStdHandler(queries)
@@ -33,13 +35,13 @@ func main() {
 		panic("Falhou ao iniciar std http")
 	}*/
 
-	/*gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	handler := api.NewGinHandler(queries)
 	handler.SetupEndpoints(r)
 	if err := r.Run(":3000"); err != nil {
 		panic("Failed to run gin server")
-	}*/
+	}
 }
 
 func showPGXPoolData(pool *pgxpool.Pool) {
