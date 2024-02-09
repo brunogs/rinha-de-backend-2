@@ -2,9 +2,10 @@ version: "3.6"
 
 services:
   api01: &api
-    build:
-      context: .
-      dockerfile: Dockerfile
+    #build:
+    #  context: .
+    #  dockerfile: dockerfile
+    image: bgskurono/rinha-gogin:latest
     hostname: api01
     environment:
       - DB_HOSTNAME=db
