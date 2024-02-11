@@ -5,33 +5,22 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	"log"
 	"net/http"
 	"strconv"
-	"time"
+	"sync"
 )
 
 type GinHandler struct {
-	queries   Queries
-	customers map[int32]*Customer
+	queries        Queries
+	customers      map[int32]*Customer
+	extractRowPool *sync.Pool
+	balancePool    *sync.Pool
 }
 
 func NewGinHandler(queries Queries) GinHandler {
-	attempts := 4
-	var customers []Customer
-	var err error
-	for i := 0; i < attempts; i++ {
-		customers, err = queries.SelectAllCustomers(context.Background())
-		if err != nil {
-			log.Println(err, "retrying")
-			time.Sleep(500 * time.Millisecond)
-		}
-		if len(customers) != 0 {
-			break
-		}
-	}
-	if len(customers) == 0 {
-		log.Fatal("failed to load customers", err)
+	customers, err := queries.SelectAllCustomers(context.Background())
+	if err != nil {
+		panic("failed to load customers" + err.Error())
 	}
 
 	customersByID := make(map[int32]*Customer)
@@ -39,9 +28,22 @@ func NewGinHandler(queries Queries) GinHandler {
 		customer := c
 		customersByID[c.ID] = &customer
 	}
+
+	extractPool := sync.Pool{
+		New: func() any {
+			return ExtractRow{}
+		},
+	}
+	balancePool := sync.Pool{
+		New: func() any {
+			return Balance{}
+		},
+	}
 	return GinHandler{
-		queries:   queries,
-		customers: customersByID,
+		queries:        queries,
+		customers:      customersByID,
+		extractRowPool: &extractPool,
+		balancePool:    &balancePool,
 	}
 }
 
@@ -73,7 +75,7 @@ func (h GinHandler) handleTransaction(c *gin.Context) {
 		return
 	}
 
-	customer := h.getCustomer(int32(id))
+	customer := h.customers[int32(id)]
 	if customer == nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -89,25 +91,21 @@ func (h GinHandler) handleTransaction(c *gin.Context) {
 	}
 }
 
-func (h GinHandler) getCustomer(customerID int32) *Customer {
-	return h.customers[customerID]
-}
-
 func (h GinHandler) credit(c *gin.Context, customer *Customer, transaction Transaction) {
-	balance, err := h.queries.Credit(context.Background(), customer, transaction)
+	balance, err := h.queries.Credit(c.Request.Context(), customer, transaction)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	b := Balance{
-		Limit:        customer.Limit,
-		BalanceValue: balance,
-	}
+	b := h.balancePool.Get().(Balance)
+	defer h.balancePool.Put(b)
+	b.Limit = customer.Limit
+	b.BalanceValue = balance
 	c.JSON(http.StatusOK, b)
 }
 
 func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transaction) {
-	balance, err := h.queries.Debit(context.Background(), customer, transaction)
+	balance, err := h.queries.Debit(c.Request.Context(), customer, transaction)
 	if err != nil {
 		if errors.Is(err, ErrNoLimit) {
 			c.Status(http.StatusUnprocessableEntity)
@@ -116,10 +114,10 @@ func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transa
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	b := Balance{
-		Limit:        customer.Limit,
-		BalanceValue: balance,
-	}
+	b := h.balancePool.Get().(Balance)
+	defer h.balancePool.Put(b)
+	b.Limit = customer.Limit
+	b.BalanceValue = balance
 	c.JSON(http.StatusOK, b)
 }
 
@@ -131,17 +129,18 @@ func (h GinHandler) handleExtract(c *gin.Context) {
 		return
 	}
 
-	extractRows, err := h.queries.Extract(context.Background(), int32(id))
+	extractRows, err := h.queries.Extract(c.Request.Context(), int32(id), h.extractRowPool)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
+	defer h.releaseRows(extractRows)
 
-	customer := h.getCustomer(int32(id))
+	customer := h.customers[int32(id)]
 	if len(extractRows) > 0 {
 		balance := extractRows[0]
 		transactions := extractRows[1:]
-		response := map[string]interface{}{
+		response := map[string]any{
 			balanceLabel:         ExtractBalance{balance.Value, balance.CreatedAt, customer.Limit},
 			lastTransactionLabel: transactions,
 		}
@@ -149,4 +148,10 @@ func (h GinHandler) handleExtract(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNotFound)
+}
+
+func (h GinHandler) releaseRows(rows []ExtractRow) {
+	for _, row := range rows {
+		h.extractRowPool.Put(row)
+	}
 }

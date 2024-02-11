@@ -17,7 +17,7 @@ func main() {
 	r := gin.New()
 	handler := api.NewGinHandler(queries)
 	handler.SetupEndpoints(r)
-	if err := r.Run(":3000"); err != nil {
+	if err = r.Run(":3000"); err != nil {
 		panic("Failed to run gin server")
 	}
 }

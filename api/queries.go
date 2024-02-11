@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"sync"
 )
 
 type Queries struct {
@@ -45,20 +47,7 @@ func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var customers []Customer
-	for rows.Next() {
-		var c Customer
-		err = rows.Scan(&c.ID, &c.Name, &c.Limit)
-		if err != nil {
-			return nil, err
-		}
-		customers = append(customers, c)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-	return customers, nil
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[Customer])
 }
 
 var ErrNoLimit = errors.New("Sem limite")
@@ -82,7 +71,7 @@ func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Tran
 	return balance, nil
 }
 
-func (q Queries) Extract(ctx context.Context, customerID int32) ([]ExtractRow, error) {
+func (q Queries) Extract(ctx context.Context, customerID int32, extractRowPool *sync.Pool) ([]ExtractRow, error) {
 	rows, err := q.pool.Query(ctx, selectExtract, customerID)
 	if err != nil {
 		return nil, err
@@ -90,7 +79,7 @@ func (q Queries) Extract(ctx context.Context, customerID int32) ([]ExtractRow, e
 	defer rows.Close()
 	var extractRows []ExtractRow
 	for rows.Next() {
-		var e ExtractRow
+		e := extractRowPool.Get().(ExtractRow)
 		err = rows.Scan(&e.Value, &e.Type, &e.Description, &e.CreatedAt)
 		if err != nil {
 			return nil, err
