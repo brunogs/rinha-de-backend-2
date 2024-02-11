@@ -10,8 +10,8 @@ services:
     environment:
       - DB_HOSTNAME=db
       - PORT=3000
-      - POOL_MAX=16
-      - POOL_MIN=12
+      - POOL_MAX=5
+      - POOL_MIN=5
     ports:
       - "3001:3000"
     depends_on:
@@ -21,7 +21,7 @@ services:
       resources:
         limits:
           cpus: "0.2"
-          memory: "190MB"
+          memory: "150MB"
 
   api02:
     <<: *api
@@ -63,7 +63,7 @@ services:
       resources:
         limits:
           cpus: "0.95"
-          memory: "150MB"
+          memory: "230MB"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 5s
