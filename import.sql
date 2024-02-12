@@ -51,19 +51,15 @@ CREATE OR REPLACE FUNCTION credit(
     parametro_tipo CHAR(1),
     parametro_descricao VARCHAR(10)
 )
-RETURNS INT AS $$
+RETURNS VOID AS $$
 DECLARE
-saldo_value INT;
+    rows_affected INT;
 BEGIN
     --PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
-
-    UPDATE saldos SET valor = valor + parametro_valor WHERE cliente_id = parametro_cliente_id
-    RETURNING valor INTO saldo_value;
+    UPDATE saldos SET valor = valor + parametro_valor WHERE cliente_id = parametro_cliente_id;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
     VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
-
-    RETURN saldo_value;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -74,24 +70,21 @@ CREATE OR REPLACE FUNCTION debit(
     parametro_tipo CHAR(1),
     parametro_descricao VARCHAR(10)
 )
-RETURNS INT AS $$
+RETURNS VOID AS $$
 DECLARE
-saldo_value INT;
-
+    rows_affected INT;
 BEGIN
     --PERFORM 1 FROM saldos WHERE cliente_id = parametro_cliente_id FOR UPDATE;
-
     UPDATE saldos SET valor = valor - parametro_valor
-    WHERE cliente_id = parametro_cliente_id AND valor - parametro_valor > parametro_limite
-    RETURNING valor INTO saldo_value;
+    WHERE cliente_id = parametro_cliente_id AND valor - parametro_valor > parametro_limite;
 
-    IF saldo_value < parametro_limite THEN
-       RETURN NULL;
+    GET DIAGNOSTICS rows_affected = ROW_COUNT;
+
+    IF rows_affected = 0 THEN
+            RAISE EXCEPTION 'Saldo insuficiente';
     END IF;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
     VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
-
-    RETURN saldo_value;
 END;
 $$ LANGUAGE plpgsql;

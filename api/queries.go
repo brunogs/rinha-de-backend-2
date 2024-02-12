@@ -18,7 +18,7 @@ func NewQueries(pool *pgxpool.Pool) Queries {
 }
 
 const (
-	selectAllCustomers = "select id, nome, limite from clientes;"
+	selectAllCustomers = "SELECT id, nome, limite FROM clientes;"
 	callCredit         = "SELECT credit($1, $2, $3, $4)"
 	callDebit          = "SELECT debit($1, $2, $3, $4, $5)"
 	selectExtract      = `
@@ -39,6 +39,8 @@ const (
 		 WHERE cliente_id = $1
 		 ORDER BY id desc LIMIT 10)
 	`
+
+	selectBalance = "SELECT valor FROM saldos WHERE cliente_id = $1"
 )
 
 func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
@@ -52,20 +54,26 @@ func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
 var ErrNoLimit = errors.New("Sem limite")
 
 func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	row := q.pool.QueryRow(ctx, callCredit, customer.ID, transaction.Value, transaction.Type, transaction.Description)
-	var balance int32
-	err := row.Scan(&balance)
+	_, err := q.pool.Exec(ctx, callCredit, customer.ID, transaction.Value, transaction.Type, transaction.Description)
 	if err != nil {
 		return 0, err
 	}
-	return balance, nil
+	return q.balanceByCustomer(ctx, customer.ID)
 }
 
 func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	row := q.pool.QueryRow(ctx, callDebit, customer.ID, customer.Limit*-1, transaction.Value, transaction.Type, transaction.Description)
+	_, err := q.pool.Exec(ctx, callDebit, customer.ID, customer.Limit*-1, transaction.Value, transaction.Type, transaction.Description)
+	if err != nil {
+		return 0, ErrNoLimit
+	}
+	return q.balanceByCustomer(ctx, customer.ID)
+}
+
+func (q Queries) balanceByCustomer(ctx context.Context, customerID int32) (int32, error) {
+	row := q.pool.QueryRow(ctx, selectBalance, customerID)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {
-		return 0, ErrNoLimit
+		return 0, err
 	}
 	return balance, nil
 }
