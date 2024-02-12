@@ -2,16 +2,16 @@ version: "3.6"
 
 services:
   api01: &api
-    #build:
-    #  context: .
-    #  dockerfile: Dockerfile
-    image: bgskurono/rinha-gogin:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #image: bgskurono/rinha-gogin:latest
     hostname: api01
     environment:
       - DB_HOSTNAME=db
       - PORT=3000
-      - POOL_MAX=5
-      - POOL_MIN=5
+      - POOL_MAX=12
+      - POOL_MIN=12
     ports:
       - "3001:3000"
     depends_on:
@@ -20,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
+          cpus: "0.18"
           memory: "150MB"
 
   api02:
@@ -44,7 +44,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
+          cpus: "0.24"
           memory: "20MB"
 
   db:
@@ -62,7 +62,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.95"
+          cpus: "0.90"
           memory: "230MB"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
