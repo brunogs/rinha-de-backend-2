@@ -7,14 +7,11 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"net/http"
 	"strconv"
-	"sync"
 )
 
 type GinHandler struct {
-	queries        Queries
-	customers      map[int32]*Customer
-	extractRowPool *sync.Pool
-	balancePool    *sync.Pool
+	queries   Queries
+	customers map[int32]*Customer
 }
 
 func NewGinHandler(queries Queries) GinHandler {
@@ -28,22 +25,9 @@ func NewGinHandler(queries Queries) GinHandler {
 		customer := c
 		customersByID[c.ID] = &customer
 	}
-
-	extractPool := sync.Pool{
-		New: func() any {
-			return ExtractRow{}
-		},
-	}
-	balancePool := sync.Pool{
-		New: func() any {
-			return Balance{}
-		},
-	}
 	return GinHandler{
-		queries:        queries,
-		customers:      customersByID,
-		extractRowPool: &extractPool,
-		balancePool:    &balancePool,
+		queries:   queries,
+		customers: customersByID,
 	}
 }
 
@@ -97,10 +81,10 @@ func (h GinHandler) credit(c *gin.Context, customer *Customer, transaction Trans
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	b := h.balancePool.Get().(Balance)
-	defer h.balancePool.Put(b)
-	b.Limit = customer.Limit
-	b.BalanceValue = balance
+	b := Balance{
+		Limit:        customer.Limit,
+		BalanceValue: balance,
+	}
 	c.JSON(http.StatusOK, b)
 }
 
@@ -114,10 +98,10 @@ func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transa
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	b := h.balancePool.Get().(Balance)
-	defer h.balancePool.Put(b)
-	b.Limit = customer.Limit
-	b.BalanceValue = balance
+	b := Balance{
+		Limit:        customer.Limit,
+		BalanceValue: balance,
+	}
 	c.JSON(http.StatusOK, b)
 }
 
@@ -129,12 +113,11 @@ func (h GinHandler) handleExtract(c *gin.Context) {
 		return
 	}
 
-	extractRows, err := h.queries.Extract(c.Request.Context(), int32(id), h.extractRowPool)
+	extractRows, err := h.queries.Extract(c.Request.Context(), int32(id))
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	defer h.releaseRows(extractRows)
 
 	customer := h.customers[int32(id)]
 	if len(extractRows) > 0 {
@@ -148,10 +131,4 @@ func (h GinHandler) handleExtract(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNotFound)
-}
-
-func (h GinHandler) releaseRows(rows []ExtractRow) {
-	for _, row := range rows {
-		h.extractRowPool.Put(row)
-	}
 }
