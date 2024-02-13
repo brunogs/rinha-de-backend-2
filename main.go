@@ -4,6 +4,7 @@ import (
 	"api/api"
 	"context"
 	"github.com/gin-gonic/gin"
+	"os"
 )
 
 func main() {
@@ -18,7 +19,8 @@ func main() {
 	handler := api.NewGinHandler(queries)
 	handler.SetupEndpoints(r)
 
-	if err = r.Run(":3000"); err != nil {
+	port := os.Getenv("PORT")
+	if err = r.Run(":" + port); err != nil {
 		panic("Failed to run gin server")
 	}
 }

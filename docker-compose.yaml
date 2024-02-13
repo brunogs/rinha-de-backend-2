@@ -8,12 +8,13 @@ services:
     #image: bgskurono/rinha-gogin:latest
     hostname: api01
     environment:
-      - DB_HOSTNAME=db
-      - PORT=3000
+      - DB_HOSTNAME=127.0.0.1
+      - PORT=3001
       - POOL_MAX=12
       - POOL_MIN=12
     ports:
-      - "3001:3000"
+      - "3001:3001"
+    network_mode: host
     depends_on:
       db:
         condition: service_healthy
@@ -27,10 +28,12 @@ services:
     <<: *api
     hostname: api02
     environment:
-      - DB_HOSTNAME=db
-      - PORT=3000
+      - DB_HOSTNAME=127.0.0.1
+      - PORT=3002
+      - POOL_MAX=12
+      - POOL_MIN=12
     ports:
-      - "3002:3000"
+      - "3002:3002"
 
   nginx:
     image: nginx:1.25.3
@@ -41,6 +44,7 @@ services:
       - api02
     ports:
       - "9999:9999"
+    network_mode: host
     deploy:
       resources:
         limits:
@@ -59,6 +63,7 @@ services:
     volumes:
       - ./import.sql:/docker-entrypoint-initdb.d/script.sql
     command: postgres -c checkpoint_timeout=600 -c max_wal_size=4096
+    network_mode: host
     deploy:
       resources:
         limits:
