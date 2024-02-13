@@ -45,49 +45,48 @@ END;
 $$;
 
 
-CREATE OR REPLACE FUNCTION credit(
-    parametro_cliente_id INT,
-    parametro_valor INT,
-    parametro_tipo CHAR(1),
-    parametro_descricao VARCHAR(10)
+CREATE OR REPLACE FUNCTION c(
+    p1 INT, --customer.id
+    p2 INT, --value
+    p3 VARCHAR(10) -- description
 )
 RETURNS INT AS $$
 DECLARE
-    saldo_value INT;
+    sv INT;
 BEGIN
-    UPDATE saldos SET valor = valor + parametro_valor WHERE cliente_id = parametro_cliente_id
-        RETURNING valor INTO saldo_value;
+    UPDATE saldos SET valor = valor + p2
+    WHERE cliente_id = p1
+        RETURNING valor INTO sv;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
-    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
+    VALUES (p1, p2, 'c', p3, now());
 
-    RETURN saldo_value;
+    RETURN sv;
 END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION debit(
-    parametro_cliente_id INT,
-    parametro_limite INT,
-    parametro_valor INT,
-    parametro_tipo CHAR(1),
-    parametro_descricao VARCHAR(10)
+CREATE OR REPLACE FUNCTION d(
+    p1 INT, --customer.id
+    p2 INT, --limit
+    p3 INT, --value
+    p4 VARCHAR(10) --description
 )
 RETURNS INT AS $$
 DECLARE
-    saldo_value INT;
+    sv INT;
 BEGIN
-    UPDATE saldos SET valor = valor - parametro_valor
-    WHERE cliente_id = parametro_cliente_id AND valor - parametro_valor > parametro_limite
-        RETURNING valor INTO saldo_value;
+    UPDATE saldos SET valor = valor - p3
+    WHERE cliente_id = p1 AND valor - p3 > p2
+    RETURNING valor INTO sv;
 
-    IF saldo_value < parametro_limite THEN
+    IF sv IS NULL THEN
            RETURN NULL;
     END IF;
 
     INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
-    VALUES (parametro_cliente_id, parametro_valor, parametro_tipo, parametro_descricao, now());
+    VALUES (p1, p3, 'd', p4, now());
 
-    RETURN saldo_value;
+    RETURN sv;
 END;
 $$ LANGUAGE plpgsql;

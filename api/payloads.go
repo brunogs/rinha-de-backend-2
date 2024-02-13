@@ -36,8 +36,8 @@ type (
 		Limit int32     `json:"limite"`
 	}
 	ExtractRow struct {
-		CreatedAt time.Time `json:"realizado_em"`
 		Transaction
+		CreatedAt time.Time `json:"realizado_em"`
 	}
 )
 
