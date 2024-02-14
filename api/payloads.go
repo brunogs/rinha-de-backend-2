@@ -7,9 +7,6 @@ const (
 	debit  = "d"
 
 	fieldID = "id"
-
-	balanceLabel         = "saldo"
-	lastTransactionLabel = "ultimas_transacoes"
 )
 
 type (
@@ -34,10 +31,6 @@ type (
 		Total int32     `json:"total"`
 		Date  time.Time `json:"data_extrato"`
 		Limit int32     `json:"limite"`
-	}
-	ExtractRow struct {
-		Transaction
-		CreatedAt time.Time `json:"realizado_em"`
 	}
 
 	ExtractOutput struct {

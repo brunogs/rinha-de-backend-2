@@ -105,34 +105,6 @@ func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transa
 	c.JSON(http.StatusOK, b)
 }
 
-func (h GinHandler) handleExtract(c *gin.Context) {
-	idStr := c.Param(fieldID)
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		c.Status(http.StatusUnprocessableEntity)
-		return
-	}
-
-	extractRows, err := h.queries.Extract(c.Request.Context(), int32(id))
-	if err != nil {
-		c.Status(http.StatusInternalServerError)
-		return
-	}
-
-	customer := h.customers[int32(id)]
-	if len(extractRows) > 0 {
-		balance := extractRows[0]
-		transactions := extractRows[1:]
-		response := map[string]any{
-			balanceLabel:         ExtractBalance{balance.Value, balance.CreatedAt, customer.Limit},
-			lastTransactionLabel: transactions,
-		}
-		c.JSON(http.StatusOK, response)
-		return
-	}
-	c.Status(http.StatusNotFound)
-}
-
 func (h GinHandler) handleExtractV2(c *gin.Context) {
 	idStr := c.Param(fieldID)
 	id, err := strconv.Atoi(idStr)
@@ -146,7 +118,7 @@ func (h GinHandler) handleExtractV2(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 		return
 	}
-	extract, err := h.queries.ExtractV2(c.Request.Context(), int32(id))
+	extract, err := h.queries.Extract(c.Request.Context(), int32(id))
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
 		return

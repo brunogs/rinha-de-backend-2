@@ -20,8 +20,6 @@ func NewQueries(pool *pgxpool.Pool) Queries {
 
 const (
 	selectAllCustomers = "SELECT id, nome, limite FROM clientes;"
-	callCredit         = "SELECT c($1, $2, $3)"
-	callDebit          = "SELECT d($1, $2, $3, $4)"
 
 	debitUpdate = `
 		UPDATE carteiras
@@ -51,26 +49,9 @@ const (
 		RETURNING valor;
 	`
 
-	selectExtract = `
-		 (SELECT 
-		     valor, 
-		     'saldo' AS tipo, 
-		     'saldo' AS descricao, 
-		     now() AS realizada_em
-		 FROM saldos
-		 WHERE cliente_id = $1)
-		 UNION ALL
-		 (SELECT 
-			valor, 
-			tipo, 
-			descricao, 
-			realizada_em
-		 FROM transacoes
-		 WHERE cliente_id = $1
-		 ORDER BY id desc LIMIT 10)
-	`
 	selectCarteira = `
-		SELECT valor, now() as realizada_em, ultimas_transacoes FROM carteiras 
+		SELECT valor, now() as realizada_em, ultimas_transacoes 
+		FROM carteiras
 		WHERE cliente_id = $1
 	`
 )
@@ -103,15 +84,7 @@ func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Tran
 	return balance, nil
 }
 
-func (q Queries) Extract(ctx context.Context, customerID int32) ([]ExtractRow, error) {
-	rows, err := q.pool.Query(ctx, selectExtract, customerID)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[ExtractRow])
-}
-
-func (q Queries) ExtractV2(ctx context.Context, customerID int32) (*ExtractOutput, error) {
+func (q Queries) Extract(ctx context.Context, customerID int32) (*ExtractOutput, error) {
 	eo := ExtractOutput{}
 	row := q.pool.QueryRow(ctx, selectCarteira, customerID)
 	if err := row.Scan(&eo.Balance.Total, &eo.Balance.Date, &eo.LastTransactions); err != nil {
