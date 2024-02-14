@@ -22,7 +22,36 @@ const (
 	selectAllCustomers = "SELECT id, nome, limite FROM clientes;"
 	callCredit         = "SELECT c($1, $2, $3)"
 	callDebit          = "SELECT d($1, $2, $3, $4)"
-	selectExtract      = `
+
+	debitUpdate = `
+		UPDATE carteiras
+		SET valor = valor - $1,
+			ultimas_transacoes = (
+				SELECT json_build_object(
+				   'valor', $1,
+				   'tipo', 'd',
+				   'descricao', $2,
+				   'realizada_em', now()
+			   ) || ultimas_transacoes)[:10]
+		WHERE cliente_id = $4 AND valor - $1 > $3
+		RETURNING valor;
+	`
+
+	creditUpdate = `
+		UPDATE carteiras
+		SET valor = valor + $1,
+			ultimas_transacoes = (
+			SELECT json_build_object(
+			 'valor', $1,
+			 'tipo', 'c',
+			 'descricao', $2,
+			 'realizada_em', now()
+			) || ultimas_transacoes)[:10]
+		WHERE cliente_id = $3
+		RETURNING valor;
+	`
+
+	selectExtract = `
 		 (SELECT 
 		     valor, 
 		     'saldo' AS tipo, 
@@ -57,7 +86,7 @@ func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
 var ErrNoLimit = errors.New("Sem limite")
 
 func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	row := q.pool.QueryRow(ctx, callCredit, customer.ID, transaction.Value, transaction.Description)
+	row := q.pool.QueryRow(ctx, creditUpdate, transaction.Value, transaction.Description, customer.ID)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {
 		return 0, err
@@ -66,7 +95,7 @@ func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Tra
 }
 
 func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
-	row := q.pool.QueryRow(ctx, callDebit, customer.ID, customer.Limit*-1, transaction.Value, transaction.Description)
+	row := q.pool.QueryRow(ctx, debitUpdate, transaction.Value, transaction.Description, customer.Limit*-1, customer.ID)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {
 		return 0, ErrNoLimit
