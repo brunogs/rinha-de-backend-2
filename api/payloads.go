@@ -39,6 +39,11 @@ type (
 		Transaction
 		CreatedAt time.Time `json:"realizado_em"`
 	}
+
+	ExtractOutput struct {
+		Balance          ExtractBalance   `json:"saldo"`
+		LastTransactions []map[string]any `json:"ultimas_transacoes"`
+	}
 )
 
 func (t Transaction) isValid() bool {

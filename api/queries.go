@@ -40,6 +40,10 @@ const (
 		 WHERE cliente_id = $1
 		 ORDER BY id desc LIMIT 10)
 	`
+	selectCarteira = `
+		SELECT valor, now() as realizada_em, ultimas_transacoes FROM carteiras 
+		WHERE cliente_id = $1
+	`
 )
 
 func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
@@ -76,4 +80,13 @@ func (q Queries) Extract(ctx context.Context, customerID int32) ([]ExtractRow, e
 		return nil, err
 	}
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[ExtractRow])
+}
+
+func (q Queries) ExtractV2(ctx context.Context, customerID int32) (*ExtractOutput, error) {
+	eo := ExtractOutput{}
+	row := q.pool.QueryRow(ctx, selectCarteira, customerID)
+	if err := row.Scan(&eo.Balance.Total, &eo.Balance.Date, &eo.LastTransactions); err != nil {
+		return nil, err
+	}
+	return &eo, nil
 }

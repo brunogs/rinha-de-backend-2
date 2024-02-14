@@ -28,6 +28,13 @@ CREATE TABLE saldos (
         FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
 
+CREATE TABLE carteiras (
+    id SERIAL PRIMARY KEY,
+    cliente_id INTEGER NOT NULL,
+    valor INTEGER NOT NULL,
+    ultimas_transacoes jsonb[] NULL
+);
+
 CREATE UNIQUE INDEX idx_saldos_cliente_id ON saldos (cliente_id) include (valor);
 
 DO $$
@@ -40,6 +47,9 @@ BEGIN
         ('cliente 4', 100000 * 100),
         ('cliente 5', 5000 * 100);
     INSERT INTO saldos (cliente_id, valor)
+        SELECT id, 0 FROM clientes;
+-- test
+    INSERT INTO carteiras(cliente_id, valor)
         SELECT id, 0 FROM clientes;
 END;
 $$;
@@ -54,13 +64,17 @@ RETURNS INT AS $$
 DECLARE
     sv INT;
 BEGIN
-    UPDATE saldos SET valor = valor + p2
+    UPDATE carteiras
+    SET valor = valor + p2,
+        ultimas_transacoes = (
+        SELECT jsonb_build_object(
+         'valor', p2,
+         'tipo', 'c',
+         'descricao', p3,
+         'realizada_em', now()
+        ) || ultimas_transacoes)[:10]
     WHERE cliente_id = p1
-        RETURNING valor INTO sv;
-
-    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
-    VALUES (p1, p2, 'c', p3, now());
-
+    RETURNING valor INTO sv;
     RETURN sv;
 END;
 $$ LANGUAGE plpgsql;
@@ -76,16 +90,17 @@ RETURNS INT AS $$
 DECLARE
     sv INT;
 BEGIN
-    UPDATE saldos SET valor = valor - p3
+    UPDATE carteiras
+    SET valor = valor - p3,
+        ultimas_transacoes = (
+            SELECT jsonb_build_object(
+               'valor', p3,
+               'tipo', 'd',
+               'descricao', p4,
+               'realizada_em', now()
+           ) || ultimas_transacoes)[:10]
     WHERE cliente_id = p1 AND valor - p3 > p2
-    RETURNING valor INTO sv;
-
-    IF sv IS NULL THEN
-           RETURN NULL;
-    END IF;
-
-    INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
-    VALUES (p1, p3, 'd', p4, now());
+        RETURNING valor INTO sv;
 
     RETURN sv;
 END;

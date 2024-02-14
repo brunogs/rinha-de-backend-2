@@ -34,7 +34,7 @@ func NewGinHandler(queries Queries) GinHandler {
 func (h GinHandler) SetupEndpoints(r *gin.Engine) {
 	r.GET("/", h.handleRoot)
 	r.POST("/clientes/:id/transacoes", h.handleTransaction)
-	r.GET("/clientes/:id/extrato", h.handleExtract)
+	r.GET("/clientes/:id/extrato", h.handleExtractV2)
 }
 
 func (h GinHandler) handleRoot(c *gin.Context) {
@@ -131,4 +131,26 @@ func (h GinHandler) handleExtract(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNotFound)
+}
+
+func (h GinHandler) handleExtractV2(c *gin.Context) {
+	idStr := c.Param(fieldID)
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.Status(http.StatusUnprocessableEntity)
+		return
+	}
+
+	customer, ok := h.customers[int32(id)]
+	if !ok {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	extract, err := h.queries.ExtractV2(c.Request.Context(), int32(id))
+	if err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+	extract.Balance.Limit = customer.Limit
+	c.JSON(http.StatusOK, *extract)
 }
