@@ -30,7 +30,7 @@ const (
 				SELECT json_build_object(
 				   'valor', $1,
 				   'tipo', 'd',
-				   'descricao', $2,
+				   'descricao', $2::text,
 				   'realizada_em', now()
 			   ) || ultimas_transacoes)[:10]
 		WHERE cliente_id = $4 AND valor - $1 > $3
@@ -44,7 +44,7 @@ const (
 			SELECT json_build_object(
 			 'valor', $1,
 			 'tipo', 'c',
-			 'descricao', $2,
+			 'descricao', $2::text,
 			 'realizada_em', now()
 			) || ultimas_transacoes)[:10]
 		WHERE cliente_id = $3
