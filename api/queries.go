@@ -66,7 +66,7 @@ func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
 
 var ErrNoLimit = errors.New("Sem limite")
 
-func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
+func (q Queries) Credit(ctx context.Context, customer *Customer, transaction *Transaction) (int32, error) {
 	row := q.pool.QueryRow(ctx, creditUpdate, transaction.Value, transaction.Description, customer.ID)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {
@@ -75,7 +75,7 @@ func (q Queries) Credit(ctx context.Context, customer *Customer, transaction Tra
 	return balance, nil
 }
 
-func (q Queries) Debit(ctx context.Context, customer *Customer, transaction Transaction) (int32, error) {
+func (q Queries) Debit(ctx context.Context, customer *Customer, transaction *Transaction) (int32, error) {
 	row := q.pool.QueryRow(ctx, debitUpdate, transaction.Value, transaction.Description, customer.Limit*-1, customer.ID)
 	var balance int32
 	if err := row.Scan(&balance); err != nil {

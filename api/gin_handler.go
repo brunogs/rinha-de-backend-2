@@ -67,15 +67,15 @@ func (h GinHandler) handleTransaction(c *gin.Context) {
 
 	switch transaction.Type {
 	case credit:
-		h.credit(c, customer, transaction)
+		h.credit(c, customer, &transaction)
 	case debit:
-		h.debit(c, customer, transaction)
+		h.debit(c, customer, &transaction)
 	default:
 		c.Status(http.StatusUnprocessableEntity)
 	}
 }
 
-func (h GinHandler) credit(c *gin.Context, customer *Customer, transaction Transaction) {
+func (h GinHandler) credit(c *gin.Context, customer *Customer, transaction *Transaction) {
 	balance, err := h.queries.Credit(c.Request.Context(), customer, transaction)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
@@ -88,7 +88,7 @@ func (h GinHandler) credit(c *gin.Context, customer *Customer, transaction Trans
 	c.JSON(http.StatusOK, b)
 }
 
-func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction Transaction) {
+func (h GinHandler) debit(c *gin.Context, customer *Customer, transaction *Transaction) {
 	balance, err := h.queries.Debit(c.Request.Context(), customer, transaction)
 	if err != nil {
 		if errors.Is(err, ErrNoLimit) {
