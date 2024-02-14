@@ -32,7 +32,7 @@ CREATE TABLE carteiras (
     id SERIAL PRIMARY KEY,
     cliente_id INTEGER NOT NULL,
     valor INTEGER NOT NULL,
-    ultimas_transacoes jsonb[] NULL
+    ultimas_transacoes json[] NULL
 );
 
 CREATE UNIQUE INDEX idx_saldos_cliente_id ON saldos (cliente_id) include (valor);
@@ -67,7 +67,7 @@ BEGIN
     UPDATE carteiras
     SET valor = valor + p2,
         ultimas_transacoes = (
-        SELECT jsonb_build_object(
+        SELECT json_build_object(
          'valor', p2,
          'tipo', 'c',
          'descricao', p3,
@@ -93,7 +93,7 @@ BEGIN
     UPDATE carteiras
     SET valor = valor - p3,
         ultimas_transacoes = (
-            SELECT jsonb_build_object(
+            SELECT json_build_object(
                'valor', p3,
                'tipo', 'd',
                'descricao', p4,
