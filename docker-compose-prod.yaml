@@ -2,17 +2,16 @@ version: "3.6"
 
 services:
   api01: &api
-    build:
-     context: .
-     dockerfile: Dockerfile
+    image: bgskurono/rinha-gogin:1.2
     hostname: api01
     environment:
-      - DB_HOSTNAME=db
+      - DB_HOSTNAME=127.0.0.1
       - PORT=3001
       - POOL_MAX=5
       - POOL_MIN=5
     ports:
       - "3001:3001"
+    network_mode: host
     depends_on:
       db:
         condition: service_healthy
@@ -26,7 +25,7 @@ services:
     <<: *api
     hostname: api02
     environment:
-      - DB_HOSTNAME=db
+      - DB_HOSTNAME=127.0.0.1
       - PORT=3002
       - POOL_MAX=5
       - POOL_MIN=5
@@ -42,6 +41,7 @@ services:
       - api02
     ports:
       - "9999:9999"
+    network_mode: host
     deploy:
       resources:
         limits:
@@ -60,6 +60,7 @@ services:
     volumes:
       - ./import.sql:/docker-entrypoint-initdb.d/script.sql
     command: postgres -c checkpoint_timeout=600 -c max_wal_size=4096 -c log_min_messages='panic' -c log_min_messages='panic' -c log_min_error_statement='panic'
+    network_mode: host
     deploy:
       resources:
         limits:
