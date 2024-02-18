@@ -7,6 +7,18 @@ CREATE TABLE clientes (
   limite INTEGER NOT NULL
 );
 
+CREATE TABLE transacoes (
+    id SERIAL PRIMARY KEY,
+    cliente_id INTEGER NOT NULL,
+    valor INTEGER NOT NULL,
+    tipo CHAR(1) NOT NULL,
+    descricao VARCHAR(10) NOT NULL,
+    realizada_em TIMESTAMP NOT NULL,
+    CONSTRAINT fk_clientes_transacoes_id
+        FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    UNIQUE (cliente_id, valor, tipo, descricao, realizada_em)
+);
+
 CREATE TABLE carteiras (
     id SERIAL PRIMARY KEY,
     cliente_id INTEGER NOT NULL,
@@ -27,3 +39,24 @@ BEGIN
         SELECT id, 0 FROM clientes;
 END;
 $$;
+
+
+CREATE OR REPLACE FUNCTION notify_new_transaction()
+RETURNS TRIGGER AS
+$$
+BEGIN
+    PERFORM pg_notify(
+        'transaction_added',
+        json_build_object(
+            'transaction', NEW.ultimas_transacoes[1],
+            'customer_id', NEW.cliente_id
+        )::TEXT
+    );
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER carteiras_update_trigger
+    AFTER UPDATE ON carteiras
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_new_transaction();

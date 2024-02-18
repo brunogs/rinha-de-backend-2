@@ -19,6 +19,9 @@ func main() {
 	handler := api.NewGinHandler(queries)
 	handler.SetupEndpoints(r)
 
+	listeners := api.NewListeners(queries)
+	listeners.SetupListeners()
+
 	port := os.Getenv("PORT")
 	if err = r.Run(":" + port); err != nil {
 		panic("Failed to run gin server")

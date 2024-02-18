@@ -54,6 +54,11 @@ const (
 		FROM carteiras
 		WHERE cliente_id = $1
 	`
+
+	insertTransaction = `
+		INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
+		VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;
+	`
 )
 
 func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
@@ -91,4 +96,10 @@ func (q Queries) Extract(ctx context.Context, customerID int32) (*ExtractOutput,
 		return nil, err
 	}
 	return &eo, nil
+}
+
+func (q Queries) InsertTransaction(ctx context.Context, event NewTransactionEvent) error {
+	t := event.Transaction
+	_, err := q.pool.Exec(ctx, insertTransaction, event.CustomerID, t.Value, t.Type, t.Description, t.CreatedAt)
+	return err
 }
