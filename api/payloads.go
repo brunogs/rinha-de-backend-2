@@ -37,6 +37,13 @@ type (
 		Balance          ExtractBalance   `json:"saldo"`
 		LastTransactions []map[string]any `json:"ultimas_transacoes"`
 	}
+
+	ReportBalanceRow struct {
+		Customer string `json:"cliente"`
+		Limit    int32  `json:"limite"`
+		Sum      int32  `json:"soma_transacoes"`
+		Balance  int32  `json:"saldo"`
+	}
 )
 
 func (t Transaction) isValid() bool {

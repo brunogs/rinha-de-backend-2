@@ -35,6 +35,7 @@ func (h GinHandler) SetupEndpoints(r *gin.Engine) {
 	r.GET("/", h.handleRoot)
 	r.POST("/clientes/:id/transacoes", h.handleTransaction)
 	r.GET("/clientes/:id/extrato", h.handleExtractV2)
+	r.GET("/relatorios/transacoes", h.handleReportTransactions)
 }
 
 func (h GinHandler) handleRoot(c *gin.Context) {
@@ -125,4 +126,13 @@ func (h GinHandler) handleExtractV2(c *gin.Context) {
 	}
 	extract.Balance.Limit = customer.Limit
 	c.JSON(http.StatusOK, *extract)
+}
+
+func (h GinHandler) handleReportTransactions(c *gin.Context) {
+	reportRows, err := h.queries.Report(c.Request.Context())
+	if err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+	c.JSON(http.StatusOK, reportRows)
 }

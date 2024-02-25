@@ -19,8 +19,11 @@ func main() {
 	handler := api.NewGinHandler(queries)
 	handler.SetupEndpoints(r)
 
-	listeners := api.NewListeners(queries)
-	listeners.SetupListeners()
+	listener := os.Getenv("LISTENER")
+	if listener == "on" {
+		listeners := api.NewListeners(queries)
+		listeners.SetupListeners()
+	}
 
 	port := os.Getenv("PORT")
 	if err = r.Run(":" + port); err != nil {

@@ -59,6 +59,24 @@ const (
 		INSERT INTO transacoes (cliente_id, valor, tipo, descricao, realizada_em)
 		VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;
 	`
+
+	selectBalanceReport = `
+		SELECT
+			c.nome AS cliente,
+			c.limite AS limite,
+			sum(CASE
+					WHEN t.tipo = 'c'
+						THEN t.valor
+					ELSE -t.valor
+				END
+			) AS soma_transacoes,
+			s.valor AS saldo
+		FROM clientes c
+		INNER JOIN public.transacoes t ON c.id = t.cliente_id
+		INNER JOIN public.carteiras s ON c.id = s.cliente_id
+		GROUP BY
+			c.nome, c.limite, s.valor;
+	`
 )
 
 func (q Queries) SelectAllCustomers(ctx context.Context) ([]Customer, error) {
@@ -102,4 +120,12 @@ func (q Queries) InsertTransaction(ctx context.Context, event NewTransactionEven
 	t := event.Transaction
 	_, err := q.pool.Exec(ctx, insertTransaction, event.CustomerID, t.Value, t.Type, t.Description, t.CreatedAt)
 	return err
+}
+
+func (q Queries) Report(ctx context.Context) ([]ReportBalanceRow, error) {
+	rows, err := q.pool.Query(ctx, selectBalanceReport)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[ReportBalanceRow])
 }

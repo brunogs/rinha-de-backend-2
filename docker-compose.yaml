@@ -11,6 +11,7 @@ services:
       - PORT=3001
       - POOL_MAX=5
       - POOL_MIN=5
+      - LISTENER=off
     ports:
       - "3001:3001"
     depends_on:
@@ -30,6 +31,7 @@ services:
       - PORT=3002
       - POOL_MAX=5
       - POOL_MIN=5
+      - LISTENER=off
     ports:
       - "3002:3002"
 
